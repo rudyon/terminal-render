@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+	"math"
 	"fmt"
 	"golang.org/x/term"
 )
@@ -20,13 +22,6 @@ type Triangle struct {
 	point1 Vector3
 	point2 Vector3
 	point3 Vector3
-}
-
-func abs(n int) int {
-	if n < 0 {
-		return -n
-	}
-	return n
 }
 
 func getTerminalSize() (int, int, error) {
@@ -54,7 +49,7 @@ func drawCanvas(canvas [][]int) {
 			if canvas[j][i] == 0 {
 				fmt.Print(" ")
 			} else if canvas[j][i] == 1 {
-				fmt.Print("#")
+				fmt.Print("*")
 			}
 		}
 		fmt.Print("\n")
@@ -62,8 +57,8 @@ func drawCanvas(canvas [][]int) {
 }
 
 func drawLine(x0, y0, x1, y1 int, canvas *[][]int) {
-	dx := abs(x1 - x0)
-	dy := abs(y1 - y0)
+	dx := math.Abs(float64(x1 - x0))
+	dy := math.Abs(float64(y1 - y0))
 	sx := -1
 	sy := -1
 
@@ -98,9 +93,9 @@ func drawLine(x0, y0, x1, y1 int, canvas *[][]int) {
 }
 
 func project(vertex Vector3, width, height float64) Vector2 {
-	scale := 200.0 / (vertex.z + 200.0)
+	scale := 200.0 / (vertex.z + 200.0) 
 	projectedX := (vertex.x * scale) + (width / 2)
-	projectedY := (vertex.y * scale) + (height /2)
+	projectedY := (vertex.y * scale) + (height / 2)
 
 	return Vector2{projectedX, projectedY}
 }
@@ -117,6 +112,33 @@ func projectTriangle(triangle Triangle, canvas *[][]int) {
 	drawLine(int(projectedPoint3.x), int(projectedPoint3.y), int(projectedPoint1.x), int(projectedPoint1.y), canvas)
 }
 
+func rotateZ(vertex *Vector3, theta float64) {
+	sin_theta := math.Sin(theta)
+	cos_theta := math.Cos(theta)
+
+	vertex.x = vertex.x * cos_theta - vertex.y * sin_theta
+	vertex.y = vertex.y * cos_theta + vertex.x * sin_theta
+
+}
+
+func rotateX(vertex *Vector3, theta float64) {
+	sin_theta := math.Sin(theta)
+	cos_theta := math.Cos(theta)
+
+	vertex.y = vertex.y * cos_theta - vertex.z * sin_theta
+	vertex.z = vertex.z * cos_theta + vertex.y * sin_theta
+
+}
+
+func rotateY(vertex *Vector3, theta float64) {
+	sin_theta := math.Sin(theta)
+	cos_theta := math.Cos(theta)
+
+	vertex.x = vertex.x * cos_theta + vertex.z * sin_theta
+	vertex.z = vertex.z * cos_theta - vertex.x * sin_theta
+
+}
+
 func main() {
 	width, height, err := getTerminalSize()
 	if err != nil {
@@ -124,17 +146,19 @@ func main() {
 		return
 	}
 
-	fmt.Println("Terminal size:")
-	fmt.Println("Width:", width)
-	fmt.Println("Height:", height)
-
-	canvas := initArray(width, height)
-
-	tri := Triangle{Vector3{20, 20, 20},
-					Vector3{-20, 20, 20},
-					Vector3{-20, -20, 20}}
-	
-	projectTriangle(tri, &canvas)
-	
-	drawCanvas(canvas)
+	tri := Triangle{Vector3{6, 6, 6},
+					Vector3{-6, 6, 6},
+					Vector3{-6, -6, 6}}
+	for {
+		rotateZ(&tri.point1, .25)
+		rotateZ(&tri.point2, .25)
+		rotateZ(&tri.point3, .25)
+		
+		canvas := initArray(width, height)
+		projectTriangle(tri, &canvas)
+		
+		fmt.Printf("\x1bc") // clears screen
+		drawCanvas(canvas)
+		time.Sleep(400 * time.Millisecond)
+	}
 }
