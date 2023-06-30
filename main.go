@@ -49,7 +49,7 @@ func drawCanvas(canvas [][]int) {
 			if canvas[j][i] == 0 {
 				fmt.Print(" ")
 			} else if canvas[j][i] == 1 {
-				fmt.Print("*")
+				fmt.Print("#")
 			}
 		}
 		fmt.Print("\n")
@@ -93,7 +93,10 @@ func drawLine(x0, y0, x1, y1 int, canvas *[][]int) {
 }
 
 func project(vertex Vector3, width, height float64) Vector2 {
-	scale := 200.0 / (vertex.z + 200.0) 
+	fov := 1200.0
+	cam_dist := 200.0
+	scale := fov / (vertex.z + cam_dist)
+
 	projectedX := (vertex.x * scale) + (width / 2)
 	projectedY := (vertex.y * scale) + (height / 2)
 
@@ -116,8 +119,11 @@ func rotateZ(vertex *Vector3, theta float64) {
 	sin_theta := math.Sin(theta)
 	cos_theta := math.Cos(theta)
 
-	vertex.x = vertex.x * cos_theta - vertex.y * sin_theta
-	vertex.y = vertex.y * cos_theta + vertex.x * sin_theta
+	x := vertex.x * cos_theta - vertex.y * sin_theta
+	y := vertex.y * cos_theta + vertex.x * sin_theta
+
+	vertex.x = x
+	vertex.y = y
 
 }
 
@@ -125,18 +131,22 @@ func rotateX(vertex *Vector3, theta float64) {
 	sin_theta := math.Sin(theta)
 	cos_theta := math.Cos(theta)
 
-	vertex.y = vertex.y * cos_theta - vertex.z * sin_theta
-	vertex.z = vertex.z * cos_theta + vertex.y * sin_theta
+	y := vertex.y * cos_theta - vertex.z * sin_theta
+	z := vertex.z * cos_theta + vertex.y * sin_theta
 
+	vertex.y = y
+	vertex.z = z
 }
 
 func rotateY(vertex *Vector3, theta float64) {
 	sin_theta := math.Sin(theta)
 	cos_theta := math.Cos(theta)
 
-	vertex.x = vertex.x * cos_theta + vertex.z * sin_theta
-	vertex.z = vertex.z * cos_theta - vertex.x * sin_theta
+	x := vertex.x * cos_theta + vertex.z * sin_theta
+	z := vertex.z * cos_theta - vertex.x * sin_theta
 
+	vertex.x = x
+	vertex.z = z
 }
 
 func main() {
@@ -146,19 +156,27 @@ func main() {
 		return
 	}
 
-	tri := Triangle{Vector3{6, 6, 6},
-					Vector3{-6, 6, 6},
-					Vector3{-6, -6, 6}}
+	tri := Triangle{Vector3{1, 1, 1},
+					Vector3{-1, 1, 1},
+					Vector3{-1, -1, 1}}
+	tri2 := Triangle{Vector3{-1, -1, 1},
+					Vector3{1, -1, 1},
+					Vector3{1, 1, 1}}
+
 	for {
-		rotateZ(&tri.point1, .25)
-		rotateZ(&tri.point2, .25)
-		rotateZ(&tri.point3, .25)
+		rotateZ(&tri.point1, .1)
+		rotateZ(&tri.point2, .1)
+		rotateZ(&tri.point3, .1)
+		rotateZ(&tri2.point1, .1)
+		rotateZ(&tri2.point2, .1)
+		rotateZ(&tri2.point3, .1)
 		
 		canvas := initArray(width, height)
 		projectTriangle(tri, &canvas)
+		projectTriangle(tri2, &canvas)
 		
 		fmt.Printf("\x1bc") // clears screen
 		drawCanvas(canvas)
-		time.Sleep(400 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
