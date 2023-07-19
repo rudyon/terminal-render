@@ -1,10 +1,10 @@
 package main
 
 import (
-	"time"
-	"math"
 	"fmt"
 	"golang.org/x/term"
+	"math"
+	"time"
 )
 
 type Vector2 struct {
@@ -49,7 +49,7 @@ func drawCanvas(canvas [][]int) {
 			if canvas[j][i] == 0 {
 				fmt.Print(" ")
 			} else if canvas[j][i] == 1 {
-				fmt.Print("#")
+				fmt.Print("█")
 			}
 		}
 		fmt.Print("\n")
@@ -94,7 +94,7 @@ func drawLine(x0, y0, x1, y1 int, canvas *[][]int) {
 
 func project(vertex Vector3, width, height float64) Vector2 {
 	fov := 1200.0
-	cam_dist := 200.0
+	cam_dist := 100.0
 	scale := fov / (vertex.z + cam_dist)
 
 	projectedX := (vertex.x * scale) + (width / 2)
@@ -107,46 +107,66 @@ func projectTriangle(triangle Triangle, canvas *[][]int) {
 	projectedPoint1 := project(triangle.point1, float64(len((*canvas)[0])), float64(len(*canvas)))
 	projectedPoint2 := project(triangle.point2, float64(len((*canvas)[0])), float64(len(*canvas)))
 	projectedPoint3 := project(triangle.point3, float64(len((*canvas)[0])), float64(len(*canvas)))
+
 	(*canvas)[int(projectedPoint1.y)][int(projectedPoint1.x)] = 1
 	(*canvas)[int(projectedPoint2.y)][int(projectedPoint2.x)] = 1
 	(*canvas)[int(projectedPoint3.y)][int(projectedPoint3.x)] = 1
+
 	drawLine(int(projectedPoint1.x), int(projectedPoint1.y), int(projectedPoint2.x), int(projectedPoint2.y), canvas)
 	drawLine(int(projectedPoint2.x), int(projectedPoint2.y), int(projectedPoint3.x), int(projectedPoint3.y), canvas)
 	drawLine(int(projectedPoint3.x), int(projectedPoint3.y), int(projectedPoint1.x), int(projectedPoint1.y), canvas)
 }
 
+func projectModel(model []Vector3, canvas *[][]int) {
+	for i := 0; i+2 < len(model); i += 3 {
+		triangle := Triangle{
+			point1: model[i],
+			point2: model[i+1],
+			point3: model[i+2],
+		}
+		projectTriangle(triangle, canvas)
+	}
+}
+
+func rotateModel(model *[]Vector3, x, y, z float64) {
+	for i := 0; i < len(*model); i++ {
+		rotateX(&((*model)[i]), x)
+		rotateY(&((*model)[i]), y)
+		rotateZ(&((*model)[i]), z)
+	}
+}
+
 func rotateZ(vertex *Vector3, theta float64) {
-	sin_theta := math.Sin(theta)
-	cos_theta := math.Cos(theta)
+	sinTheta := math.Sin(theta)
+	cosTheta := math.Cos(theta)
 
-	x := vertex.x * cos_theta - vertex.y * sin_theta
-	y := vertex.y * cos_theta + vertex.x * sin_theta
+	x := vertex.x
+	y := vertex.y
 
-	vertex.x = x
-	vertex.y = y
-
+	vertex.x = x*cosTheta - y*sinTheta
+	vertex.y = y*cosTheta + x*sinTheta
 }
 
 func rotateX(vertex *Vector3, theta float64) {
-	sin_theta := math.Sin(theta)
-	cos_theta := math.Cos(theta)
+	sinTheta := math.Sin(theta)
+	cosTheta := math.Cos(theta)
 
-	y := vertex.y * cos_theta - vertex.z * sin_theta
-	z := vertex.z * cos_theta + vertex.y * sin_theta
+	y := vertex.y
+	z := vertex.z
 
-	vertex.y = y
-	vertex.z = z
+	vertex.y = y*cosTheta - z*sinTheta
+	vertex.z = z*cosTheta + y*sinTheta
 }
 
 func rotateY(vertex *Vector3, theta float64) {
-	sin_theta := math.Sin(theta)
-	cos_theta := math.Cos(theta)
+	sinTheta := math.Sin(theta)
+	cosTheta := math.Cos(theta)
 
-	x := vertex.x * cos_theta + vertex.z * sin_theta
-	z := vertex.z * cos_theta - vertex.x * sin_theta
+	x := vertex.x
+	z := vertex.z
 
-	vertex.x = x
-	vertex.z = z
+	vertex.x = x*cosTheta + z*sinTheta
+	vertex.z = z*cosTheta - x*sinTheta
 }
 
 func main() {
@@ -156,25 +176,64 @@ func main() {
 		return
 	}
 
-	tri := Triangle{Vector3{1, 1, 1},
-					Vector3{-1, 1, 1},
-					Vector3{-1, -1, 1}}
-	tri2 := Triangle{Vector3{-1, -1, 1},
-					Vector3{1, -1, 1},
-					Vector3{1, 1, 1}}
+	
+	
+	model := []Vector3{
+		// Front face
+		{-1, -1, 1},   // Front bottom left
+		{1, -1, 1},    // Front bottom right
+		{-1, 1, 1},    // Front top left
+		{1, 1, 1},     // Front top right
+		{-1, 1, 1},    // Front top left
+		{1, -1, 1},    // Front bottom right
+
+		// Back face
+		{-1, -1, -1},  // Back bottom left
+		{-1, 1, -1},   // Back top left
+		{1, -1, -1},   // Back bottom right
+		{-1, 1, -1},   // Back top left
+		{1, 1, -1},    // Back top right
+		{1, -1, -1},   // Back bottom right
+
+		// Left face
+		{-1, -1, -1},  // Back bottom left
+		{-1, 1, -1},   // Back top left
+		{-1, -1, 1},   // Front bottom left
+		{-1, 1, -1},   // Back top left
+		{-1, 1, 1},    // Front top left
+		{-1, -1, 1},   // Front bottom left
+
+		// Right face
+		{1, -1, 1},    // Front bottom right
+		{1, 1, 1},     // Front top right
+		{1, -1, -1},   // Back bottom right
+		{1, 1, 1},     // Front top right
+		{1, 1, -1},    // Back top right
+		{1, -1, -1},   // Back bottom right
+
+		// Top face
+		{-1, 1, 1},    // Front top left
+		{1, 1, 1},     // Front top right
+		{-1, 1, -1},   // Back top left
+		{1, 1, 1},     // Front top right
+		{1, 1, -1},    // Back top right
+		{-1, 1, -1},   // Back top left
+
+		// Bottom face
+		{-1, -1, 1},   // Front bottom left
+		{-1, -1, -1},  // Back bottom left
+		{1, -1, 1},    // Front bottom right
+		{-1, -1, -1},  // Back bottom left
+		{1, -1, -1},   // Back bottom right
+		{1, -1, 1},    // Front bottom right
+	}
 
 	for {
-		rotateZ(&tri.point1, .1)
-		rotateZ(&tri.point2, .1)
-		rotateZ(&tri.point3, .1)
-		rotateZ(&tri2.point1, .1)
-		rotateZ(&tri2.point2, .1)
-		rotateZ(&tri2.point3, .1)
-		
+		rotateModel(&model, 0.1, 0.1, 0.1)
+
 		canvas := initArray(width, height)
-		projectTriangle(tri, &canvas)
-		projectTriangle(tri2, &canvas)
-		
+		projectModel(model, &canvas)
+
 		fmt.Printf("\x1bc") // clears screen
 		drawCanvas(canvas)
 		time.Sleep(100 * time.Millisecond)
