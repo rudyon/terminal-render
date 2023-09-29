@@ -5,6 +5,7 @@ import (
 	"golang.org/x/term"
 	"math"
 	"time"
+	"github.com/hschendel/stl"
 )
 
 type Vector2 struct {
@@ -103,29 +104,45 @@ func project(vertex Vector3, width, height float64) Vector2 {
 	return Vector2{projectedX, projectedY}
 }
 
+
 func projectTriangle(triangle Triangle, canvas *[][]int) {
-	projectedPoint1 := project(triangle.point1, float64(len((*canvas)[0])), float64(len(*canvas)))
+    width := len(*canvas)
+    height := len((*canvas)[0])
+
+    projectedPoint1 := project(triangle.point1, float64(len((*canvas)[0])), float64(len(*canvas)))
 	projectedPoint2 := project(triangle.point2, float64(len((*canvas)[0])), float64(len(*canvas)))
 	projectedPoint3 := project(triangle.point3, float64(len((*canvas)[0])), float64(len(*canvas)))
 
-	(*canvas)[int(projectedPoint1.y)][int(projectedPoint1.x)] = 1
-	(*canvas)[int(projectedPoint2.y)][int(projectedPoint2.x)] = 1
-	(*canvas)[int(projectedPoint3.y)][int(projectedPoint3.x)] = 1
+    // Check bounds before accessing the canvas
+    if int(projectedPoint1.x) >= 0 && int(projectedPoint1.x) < width &&
+        int(projectedPoint1.y) >= 0 && int(projectedPoint1.y) < height {
+        (*canvas)[int(projectedPoint1.y)][int(projectedPoint1.x)] = 1
+    }
+    
+    if int(projectedPoint2.x) >= 0 && int(projectedPoint2.x) < width &&
+        int(projectedPoint2.y) >= 0 && int(projectedPoint2.y) < height {
+        (*canvas)[int(projectedPoint2.y)][int(projectedPoint2.x)] = 1
+    }
+    
+    if int(projectedPoint3.x) >= 0 && int(projectedPoint3.x) < width &&
+        int(projectedPoint3.y) >= 0 && int(projectedPoint3.y) < height {
+        (*canvas)[int(projectedPoint3.y)][int(projectedPoint3.x)] = 1
+    }
 
-	drawLine(int(projectedPoint1.x), int(projectedPoint1.y), int(projectedPoint2.x), int(projectedPoint2.y), canvas)
-	drawLine(int(projectedPoint2.x), int(projectedPoint2.y), int(projectedPoint3.x), int(projectedPoint3.y), canvas)
-	drawLine(int(projectedPoint3.x), int(projectedPoint3.y), int(projectedPoint1.x), int(projectedPoint1.y), canvas)
+    drawLine(int(projectedPoint1.x), int(projectedPoint1.y), int(projectedPoint2.x), int(projectedPoint2.y), canvas)
+    drawLine(int(projectedPoint2.x), int(projectedPoint2.y), int(projectedPoint3.x), int(projectedPoint3.y), canvas)
+    drawLine(int(projectedPoint3.x), int(projectedPoint3.y), int(projectedPoint1.x), int(projectedPoint1.y), canvas)
 }
 
 func projectModel(model []Vector3, canvas *[][]int) {
-	for i := 0; i+2 < len(model); i += 3 {
-		triangle := Triangle{
-			point1: model[i],
-			point2: model[i+1],
-			point3: model[i+2],
-		}
-		projectTriangle(triangle, canvas)
-	}
+    for i := 0; i+2 < len(model); i += 3 {
+        triangle := Triangle{
+            point1: model[i],
+            point2: model[i+1],
+            point3: model[i+2],
+        }
+        projectTriangle(triangle, canvas)
+    }
 }
 
 func rotateModel(model *[]Vector3, x, y, z float64) {
@@ -169,6 +186,46 @@ func rotateY(vertex *Vector3, theta float64) {
 	vertex.z = z*cosTheta - x*sinTheta
 }
 
+func convertSTLSolidToVector3Array(stlSolid stl.Solid) []Vector3 {
+    var vertices []Vector3
+
+    for _, triangle := range stlSolid.Triangles {
+        // Extract vertices from the triangle
+        point1 := Vector3{x: float64(triangle.Vertices[0][0]), y: float64(triangle.Vertices[0][1]), z: float64(triangle.Vertices[0][2])}
+        point2 := Vector3{x: float64(triangle.Vertices[1][0]), y: float64(triangle.Vertices[1][1]), z: float64(triangle.Vertices[1][2])}
+        point3 := Vector3{x: float64(triangle.Vertices[2][0]), y: float64(triangle.Vertices[2][1]), z: float64(triangle.Vertices[2][2])}
+
+        // Append the vertices to the slice
+        vertices = append(vertices, point1, point2, point3)
+    }
+
+    return vertices
+}
+
+// Function to clear the canvas
+func clearCanvas(canvas [][]int) {
+	for i := 0; i < len(canvas); i++ {
+		for j := 0; j < len(canvas[i]); j++ {
+			canvas[i][j] = 0
+		}
+	}
+	fmt.Print("\033[H\033[2J") // Move cursor to top-left and clear the screen
+}
+
+// Function to print the canvas to the terminal
+func printCanvas(canvas [][]int) {
+	for i := 0; i < len(canvas); i++ {
+		for j := 0; j < len(canvas[i]); j++ {
+			if canvas[i][j] == 0 {
+				fmt.Print(" ")
+			} else if canvas[i][j] == 1 {
+				fmt.Print("█")
+			}
+		}
+		fmt.Print("\n")
+	}
+}
+
 func main() {
 	width, height, err := getTerminalSize()
 	if err != nil {
@@ -176,66 +233,39 @@ func main() {
 		return
 	}
 
-	
-	
-	model := []Vector3{
-		// Front face
-		{-1, -1, 1},   // Front bottom left
-		{1, -1, 1},    // Front bottom right
-		{-1, 1, 1},    // Front top left
-		{1, 1, 1},     // Front top right
-		{-1, 1, 1},    // Front top left
-		{1, -1, 1},    // Front bottom right
+	// Initialize the canvas with the terminal dimensions
+	canvas := initArray(height, width) // Note the reversal of height and width
+	clearCanvas(canvas) // Clear the canvas before drawing
 
-		// Back face
-		{-1, -1, -1},  // Back bottom left
-		{-1, 1, -1},   // Back top left
-		{1, -1, -1},   // Back bottom right
-		{-1, 1, -1},   // Back top left
-		{1, 1, -1},    // Back top right
-		{1, -1, -1},   // Back bottom right
-
-		// Left face
-		{-1, -1, -1},  // Back bottom left
-		{-1, 1, -1},   // Back top left
-		{-1, -1, 1},   // Front bottom left
-		{-1, 1, -1},   // Back top left
-		{-1, 1, 1},    // Front top left
-		{-1, -1, 1},   // Front bottom left
-
-		// Right face
-		{1, -1, 1},    // Front bottom right
-		{1, 1, 1},     // Front top right
-		{1, -1, -1},   // Back bottom right
-		{1, 1, 1},     // Front top right
-		{1, 1, -1},    // Back top right
-		{1, -1, -1},   // Back bottom right
-
-		// Top face
-		{-1, 1, 1},    // Front top left
-		{1, 1, 1},     // Front top right
-		{-1, 1, -1},   // Back top left
-		{1, 1, 1},     // Front top right
-		{1, 1, -1},    // Back top right
-		{-1, 1, -1},   // Back top left
-
-		// Bottom face
-		{-1, -1, 1},   // Front bottom left
-		{-1, -1, -1},  // Back bottom left
-		{1, -1, 1},    // Front bottom right
-		{-1, -1, -1},  // Back bottom left
-		{1, -1, -1},   // Back bottom right
-		{1, -1, 1},    // Front bottom right
+	// Load the STL model using hschendel/stl
+	stlFilePath := "model.stl"
+	stlSolid, err := stl.ReadFile(stlFilePath)
+	if err != nil {
+		fmt.Println("Error reading STL file:", err)
+		return
 	}
+
+	// Convert the STL data to your format
+	model := convertSTLSolidToVector3Array(*stlSolid) // Dereference the pointer
+	
+	// Define a scaling factor (adjust as needed)
+    scalingFactor := 1.00
+
+    // Scale down the model's coordinates
+    for i := 0; i < len(model); i++ {
+        model[i].x *= scalingFactor
+        model[i].y *= scalingFactor
+        model[i].z *= scalingFactor
+    }
 
 	for {
 		rotateModel(&model, 0.1, 0.1, 0.1)
+		clearCanvas(canvas)
 
-		canvas := initArray(width, height)
 		projectModel(model, &canvas)
+		printCanvas(canvas)
 
-		fmt.Printf("\x1bc") // clears screen
-		drawCanvas(canvas)
 		time.Sleep(100 * time.Millisecond)
 	}
 }
+

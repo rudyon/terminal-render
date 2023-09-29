@@ -1,3 +1,5 @@
+github.com/hschendel/stl v1.0.4 h1:DXT5rkiXMUkbKw4Ndi1OYZ/a5SLR35TzxGj46p5Qyf8=
+github.com/hschendel/stl v1.0.4/go.mod h1:XQFFLKrq9YTaBpmouDui4JSaxMyAYkpD7elGSSj/y3M=
 golang.org/x/sys v0.9.0 h1:KS/R3tvhPqvJvwcKfnBHJwwthS11LRhmM5D59eEXa0s=
 golang.org/x/sys v0.9.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.10.0 h1:SqMFp9UcQJZa+pmYuAKjd9xq1f0j5rLcDIk0mj4qAsA=
